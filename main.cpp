@@ -68,8 +68,8 @@ cpp_int DescryptedMessage(cpp_int SM, cpp_int d, cpp_int n) {
 }
 
 int main() {
-    cpp_int p =  9999999967;
-    cpp_int q =  16769023;
+    cpp_int p =  4398042316799;
+    cpp_int q =  274876858367;
 
     cpp_int d = GenerateKey(p, q);
     std::cout << "Закрытая экспонента d: " << d << std::endl;
