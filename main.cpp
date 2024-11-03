@@ -1,5 +1,7 @@
 #include <boost/multiprecision/cpp_int.hpp>
 #include <iostream>
+#include <string>
+#include <vector>
 
 using namespace boost::multiprecision;
 
@@ -22,11 +24,11 @@ cpp_int PowMod(cpp_int base, cpp_int exp, cpp_int mod) {
     base = base % mod;
 
     while (exp > 0) {
-        if (exp % 2 == 1) { // Если exp нечетное
+        if (exp % 2 == 1) {
             result = (result * base) % mod;
         }
-        exp = exp >> 1; // Делим exp на 2
-        base = (base * base) % mod; // Увеличиваем степень
+        exp = exp >> 1;
+        base = (base * base) % mod;
     }
     return result;
 }
@@ -39,15 +41,14 @@ cpp_int GenerateKey(cpp_int p, cpp_int q) {
     }
 
     cpp_int phi = (p - 1) * (q - 1);
-    cpp_int e = 65537; // Используем стандартное значение для открытой экспоненты
+    cpp_int e = 65537;
 
-    // Нахождение d с использованием расширенного алгоритма Евклида
     cpp_int d = 0;
-    cpp_int k = 1; // Начинаем с k = 1
+    cpp_int k = 1;
     while (true) {
         cpp_int val = k * phi + 1;
         if (val % e == 0) {
-            d = val / e; // Находим d
+            d = val / e;
             break;
         }
         ++k;
@@ -55,34 +56,80 @@ cpp_int GenerateKey(cpp_int p, cpp_int q) {
     return d;
 }
 
-// Шифрование сообщения
-cpp_int ScryptedMessage(cpp_int m, cpp_int e, cpp_int n) {
-    cpp_int SM = PowMod(m, e, n);
-    return SM;
+// Преобразование строки в число
+cpp_int TextToNumber(const std::string &text) {
+    cpp_int num = 0;
+    for (char c : text) {
+        num = num * 256 + static_cast<unsigned char>(c);
+    }
+    return num;
 }
 
-// Дешифрование сообщения
-cpp_int DescryptedMessage(cpp_int SM, cpp_int d, cpp_int n) {
-    cpp_int DSM = PowMod(SM, d, n);
-    return DSM;
+// Преобразование числа в строку
+std::string NumberToText(cpp_int num) {
+    std::string text;
+    while (num > 0) {
+        text.insert(text.begin(), static_cast<char>(num % 256));
+        num /= 256;
+    }
+    return text;
+}
+
+// Шифрование блока текста
+cpp_int EncryptBlock(cpp_int m, cpp_int e, cpp_int n) {
+    return PowMod(m, e, n);
+}
+
+// Дешифрование блока текста
+cpp_int DecryptBlock(cpp_int c, cpp_int d, cpp_int n) {
+    return PowMod(c, d, n);
+}
+
+// Шифрование строки
+std::vector<cpp_int> EncryptText(const std::string &message, cpp_int e, cpp_int n) {
+    std::vector<cpp_int> encryptedBlocks;
+    size_t blockSize = 3; // Количество байтов в блоке (выбирается так, чтобы блок < n)
+
+    for (size_t i = 0; i < message.size(); i += blockSize) {
+        std::string block = message.substr(i, blockSize);
+        cpp_int m = TextToNumber(block);
+        encryptedBlocks.push_back(EncryptBlock(m, e, n));
+    }
+    return encryptedBlocks;
+}
+
+// Дешифрование строки
+std::string DecryptText(const std::vector<cpp_int> &encryptedBlocks, cpp_int d, cpp_int n) {
+    std::string decryptedMessage;
+    for (const cpp_int &block : encryptedBlocks) {
+        cpp_int decryptedBlock = DecryptBlock(block, d, n);
+        decryptedMessage += NumberToText(decryptedBlock);
+    }
+    return decryptedMessage;
 }
 
 int main() {
-    cpp_int p =  4398042316799;
-    cpp_int q =  274876858367;
+    cpp_int p = 9999999967;
+    cpp_int q = 16769023;
 
     cpp_int d = GenerateKey(p, q);
-    std::cout << "Закрытая экспонента d: " << d << std::endl;
-
-    cpp_int e = 65537; // Открытая экспонента
-    cpp_int m = 42;
+    cpp_int e = 65537;
     cpp_int n = p * q;
 
-    cpp_int SM = ScryptedMessage(m, e, n);
-    std::cout << "Зашифрованное сообщение: " << SM << std::endl;
+    std::string message = "Hello, RSA!";
+    std::cout << "Оригинальное сообщение: " << message << std::endl;
 
-    cpp_int DSM = DescryptedMessage(SM, d, n);
-    std::cout << "Расшифрованное сообщение: " << DSM << std::endl;
+    // Шифрование
+    std::vector<cpp_int> encryptedMessage = EncryptText(message, e, n);
+    std::cout << "Зашифрованное сообщение: ";
+    for (const auto &block : encryptedMessage) {
+        std::cout << block << " ";
+    }
+    std::cout << std::endl;
+
+    // Дешифрование
+    std::string decryptedMessage = DecryptText(encryptedMessage, d, n);
+    std::cout << "Расшифрованное сообщение: " << decryptedMessage << std::endl;
 
     return 0;
 }
