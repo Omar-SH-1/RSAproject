@@ -4,7 +4,9 @@ project(RSAproject)
 set(CMAKE_CXX_STANDARD 20)
 
 
-add_executable(RSAproject main.cpp)
+add_executable(RSAproject main.cpp
+        rsa.cpp
+        rsa.h)
 
 
 find_package(Boost REQUIRED)
