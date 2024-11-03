@@ -3,4 +3,10 @@ project(RSAproject)
 
 set(CMAKE_CXX_STANDARD 20)
 
+
 add_executable(RSAproject main.cpp)
+
+
+find_package(Boost REQUIRED)
+
+target_link_libraries(RSAproject Boost::boost)

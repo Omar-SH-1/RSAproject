@@ -1,103 +1,88 @@
+#include <boost/multiprecision/cpp_int.hpp>
 #include <iostream>
-#include <vector>
-#include <gmpxx.h>
 
-mpz_class gcd(const mpz_class& a, const mpz_class& b) {
-    mpz_class temp;
-    mpz_class a_copy = a, b_copy = b;
-    while (b_copy != 0) {
-        temp = b_copy;
-        b_copy = a_copy % b_copy;
-        a_copy = temp;
+using namespace boost::multiprecision;
+
+// Проверка, является ли число простым
+bool Prost(cpp_int n) {
+    if (n <= 1) {
+        return false;
     }
-    return a_copy;
+    for (cpp_int i = 2; i * i <= n; ++i) {
+        if (n % i == 0) {
+            return false;
+        }
+    }
+    return true;
 }
 
-// Вычисление значения d через формулу
-mpz_class calculateD(const mpz_class& e, const mpz_class& phi) {
-    mpz_class k = 1;
-    mpz_class candidate;
-    while (true) {
-        candidate = 1 + k * phi;
-        if (candidate % e == 0) {
-            return candidate / e;
-        }
-        k++;
-    }
-}
+// Быстрое возведение в степень по модулю
+cpp_int PowMod(cpp_int base, cpp_int exp, cpp_int mod) {
+    cpp_int result = 1;
+    base = base % mod;
 
-mpz_class modPow(const mpz_class& base, const mpz_class& exp, const mpz_class& mod) {
-    mpz_class result = 1;
-    mpz_class base_mod = base % mod;
-    mpz_class exp_copy = exp;
-
-    while (exp_copy > 0) {
-        if (exp_copy % 2 == 1) {
-            result = (result * base_mod) % mod;
+    while (exp > 0) {
+        if (exp % 2 == 1) { // Если exp нечетное
+            result = (result * base) % mod;
         }
-        exp_copy = exp_copy >> 1; // exp = exp / 2
-        base_mod = (base_mod * base_mod) % mod;
+        exp = exp >> 1; // Делим exp на 2
+        base = (base * base) % mod; // Увеличиваем степень
     }
     return result;
 }
 
-// Функция для генерации ключей RSA
-void generateRSAKeys(mpz_class& e, mpz_class& d, mpz_class& n) {
-    mpz_class p = 61; // Первое простое число
-    mpz_class q = 53; // Второе простое число
-
-    n = p * q;
-    mpz_class phi = (p - 1) * (q - 1);
-
-    e = 2;
-    while (gcd(e, phi) != 1) {
-        e++;
+// Генерация закрытой экспоненты d
+cpp_int GenerateKey(cpp_int p, cpp_int q) {
+    if (!Prost(p) || !Prost(q)) {
+        std::cout << "error: p и q должны быть простыми числами." << std::endl;
+        return cpp_int(0);
     }
 
-    d = calculateD(e, phi);
+    cpp_int phi = (p - 1) * (q - 1);
+    cpp_int e = 65537; // Используем стандартное значение для открытой экспоненты
+
+    // Нахождение d с использованием расширенного алгоритма Евклида
+    cpp_int d = 0;
+    cpp_int k = 1; // Начинаем с k = 1
+    while (true) {
+        cpp_int val = k * phi + 1;
+        if (val % e == 0) {
+            d = val / e; // Находим d
+            break;
+        }
+        ++k;
+    }
+    return d;
 }
 
-// Функция для шифрования сообщения
-std::vector<mpz_class> encrypt(const std::string& message, const mpz_class& e, const mpz_class& n) {
-    std::vector<mpz_class> encryptedMessage;
-    for (char c : message) {
-        encryptedMessage.push_back(modPow(c, e, n));
-    }
-    return encryptedMessage;
+// Шифрование сообщения
+cpp_int ScryptedMessage(cpp_int m, cpp_int e, cpp_int n) {
+    cpp_int SM = PowMod(m, e, n);
+    return SM;
 }
 
-// Функция для расшифровки сообщения
-std::string decrypt(const std::vector<mpz_class>& encryptedMessage, const mpz_class& d, const mpz_class& n) {
-    std::string decryptedMessage;
-    for (const auto& c : encryptedMessage) {
-        // Преобразуем расшифрованное значение в символ
-        decryptedMessage.push_back(static_cast<char>(modPow(c, d, n).get_si()));
-    }
-    return decryptedMessage;
+// Дешифрование сообщения
+cpp_int DescryptedMessage(cpp_int SM, cpp_int d, cpp_int n) {
+    cpp_int DSM = PowMod(SM, d, n);
+    return DSM;
 }
 
 int main() {
-    mpz_class e, d, n;
+    cpp_int p =  9999999967;
+    cpp_int q =  16769023;
 
-    // Генерируем ключи
-    generateRSAKeys(e, d, n);
+    cpp_int d = GenerateKey(p, q);
+    std::cout << "Закрытая экспонента d: " << d << std::endl;
 
-    std::cout << "Открытый ключ: (" << e << ", " << n << ")\n";
-    std::cout << "Закрытый ключ: (" << d << ", " << n << ")\n";
+    cpp_int e = 65537; // Открытая экспонента
+    cpp_int m = 42;
+    cpp_int n = p * q;
 
-    std::string message;
-    std::cout << "Введите сообщение для шифрования: ";
-    std::getline(std::cin, message);
+    cpp_int SM = ScryptedMessage(m, e, n);
+    std::cout << "Зашифрованное сообщение: " << SM << std::endl;
 
-    std::vector<mpz_class> encryptedMessage = encrypt(message, e, n);
-    std::cout << "Зашифрованное сообщение: ";
-    for (const auto& c : encryptedMessage) {
-        std::cout << c << " ";
-    }
-    std::cout << std::endl;
-
-    std::string decryptedMessage = decrypt(encryptedMessage, d, n);
-    std::cout << "Расшифрованное сообщение: " << decryptedMessage << std::endl;
+    cpp_int DSM = DescryptedMessage(SM, d, n);
+    std::cout << "Расшифрованное сообщение: " << DSM << std::endl;
 
     return 0;
 }
