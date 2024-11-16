@@ -79,9 +79,9 @@ cpp_int DecryptBlock(cpp_int c, cpp_int d, cpp_int n) {
 }
 
 // Шифрование текста
-std::vector<cpp_int> EncryptText(const std::string &message, cpp_int e, cpp_int n) {
+std::vector<cpp_int> EncryptText(const std::string &message, cpp_int e, cpp_int n, cpp_int s) {
     std::vector<cpp_int> encryptedBlocks;
-    size_t blockSize = 3;
+    size_t blockSize = s.convert_to<size_t>();
     for (size_t i = 0; i < message.size(); i += blockSize) {
         std::string block = message.substr(i, blockSize);
         cpp_int m = TextToNumber(block);
